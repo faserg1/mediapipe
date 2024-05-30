@@ -1,0 +1,127 @@
+# CPU image. (ImageFrame)
+input_stream: "input_video"
+
+# hands landmarks. (std::vector<NormalizedLandmarkList>)
+output_stream: "hand_landmarks"
+
+# handness (assumed flipped horizontaly) std::vector<ClassificationList>
+output_stream: "handedness"
+
+# hands landmarks. (std::vector<LandmarkList>)
+output_stream: "hand_world_landmarks"
+
+# Pose landmarks. (LandmarkList)
+output_stream: "pose_world_landmarks"
+
+# Pose landmarks. (NormalizedLandmarkList)
+output_stream: "pose_landmarks"
+
+output_stream: "CLASSIFICATIONS:blendshapes"
+
+###
+### Constants
+###
+
+
+# Generates side packet cotaining max number of hands to detect/track.
+node {
+  calculator: "ConstantSidePacketCalculator"
+  output_side_packet: "PACKET:num_hands"
+  node_options: {
+    [type.googleapis.com/mediapipe.ConstantSidePacketCalculatorOptions]: {
+      packet { int_value: 2 }
+    }
+  }
+}
+
+# Defines side packets for further use in the graph.
+node {
+  calculator: "ConstantSidePacketCalculator"
+  output_side_packet: "PACKET:0:num_faces"
+  output_side_packet: "PACKET:1:with_attention"
+  node_options: {
+    [type.googleapis.com/mediapipe.ConstantSidePacketCalculatorOptions]: {
+      packet { int_value: 1 }
+      packet { bool_value: true }
+    }
+  }
+}
+
+# Generates side packet to enable segmentation.
+node {
+  calculator: "ConstantSidePacketCalculator"
+  output_side_packet: "PACKET:enable_segmentation"
+  node_options: {
+    [type.googleapis.com/mediapipe.ConstantSidePacketCalculatorOptions]: {
+      packet { bool_value: true }
+    }
+  }
+}
+
+###
+### Prepare
+###
+
+node {
+  calculator: "ImagePropertiesCalculator"
+  input_stream: "IMAGE_CPU:input_video"
+  output_stream: "SIZE:image_size"
+}
+
+###
+### Hands
+###
+
+# Detects/tracks hand landmarks.
+node {
+  calculator: "HandLandmarkTrackingCpu"
+  input_stream: "IMAGE:input_video"
+  input_side_packet: "NUM_HANDS:num_hands"
+  #LANDMARKS:landmarks
+  #output_stream: "LANDMARKS:landmarks"
+  output_stream: "LANDMARKS:hand_landmarks"
+  output_stream: "WORLD_LANDMARKS:hand_world_landmarks"
+  output_stream: "HANDEDNESS:handedness"
+  output_stream: "PALM_DETECTIONS:multi_palm_detections"
+  output_stream: "HAND_ROIS_FROM_LANDMARKS:multi_hand_rects"
+  output_stream: "HAND_ROIS_FROM_PALM_DETECTIONS:multi_palm_rects"
+}
+
+###
+### Face
+###
+
+# Subgraph that detects faces and corresponding landmarks.
+node {
+  calculator: "FaceLandmarkFrontCpu"
+  input_stream: "IMAGE:input_video"
+  input_side_packet: "NUM_FACES:num_faces"
+  input_side_packet: "WITH_ATTENTION:with_attention"
+  output_stream: "LANDMARKS:multi_face_landmarks"
+  output_stream: "ROIS_FROM_LANDMARKS:face_rects_from_landmarks"
+  output_stream: "DETECTIONS:face_detections"
+  output_stream: "ROIS_FROM_DETECTIONS:face_rects_from_detections"
+}
+
+node {
+  calculator: "FaceCategorizer"
+  input_stream: "LANDMARKS:multi_face_landmarks"
+  input_stream: "IMAGE_SIZE:image_size"
+  output_stream: "CLASSIFICATIONS:blendshapes"
+}
+
+###
+### Pose
+###
+
+# Subgraph that detects poses and corresponding landmarks.
+node {
+  calculator: "PoseLandmarkCpu"
+  input_side_packet: "ENABLE_SEGMENTATION:enable_segmentation"
+  input_stream: "IMAGE:input_video"
+  output_stream: "LANDMARKS:pose_landmarks"
+  output_stream: "WORLD_LANDMARKS:pose_world_landmarks"
+  output_stream: "SEGMENTATION_MASK:segmentation_mask"
+  output_stream: "DETECTION:pose_detection"
+  output_stream: "ROI_FROM_LANDMARKS:roi_from_landmarks"
+}

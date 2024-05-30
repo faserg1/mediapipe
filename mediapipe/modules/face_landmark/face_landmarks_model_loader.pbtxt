@@ -35,6 +35,7 @@ node {
           [mediapipe.ConstantSidePacketCalculatorOptions.ext]: {
             packet {
               string_value: "mediapipe/modules/face_landmark/face_landmark_with_attention.tflite"
+              #string_value: "l2d_tracker/graphs/face_landmarks_detector.tflite"
             }
           }
         }

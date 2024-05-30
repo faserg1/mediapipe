@@ -449,6 +449,12 @@ def external_files():
     )
 
     http_file(
+        name = "com_google_mediapipe_face_blendshapes_tflite",
+        sha256 = "4f36dded049db18d76048567439b2a7f58f1daabc00d78bfe8f3ad396a2d2082",
+        urls = ["https://storage.googleapis.com/mediapipe-assets/face_blendshapes.tflite"],
+    )
+
+    http_file(
         name = "com_google_mediapipe_feature_tensor_meta_json",
         sha256 = "b2c30ddfd495956ce81085f8a143422f4310b002cfbf1c594ff2ee0576e29d6f",
         urls = ["https://storage.googleapis.com/mediapipe-assets/feature_tensor_meta.json?generation=1665422818797346"],
