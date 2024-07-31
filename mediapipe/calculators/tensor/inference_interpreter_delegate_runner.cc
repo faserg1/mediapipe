@@ -90,7 +90,10 @@ class InferenceInterpreterDelegateRunner : public InferenceRunner {
       : model_(std::move(model)),
         interpreter_(std::move(interpreter)),
         delegate_(std::move(delegate)),
-        input_output_tensor_names_(std::move(input_output_tensor_names)) {}
+        input_output_tensor_names_(std::move(input_output_tensor_names)) {
+
+          ABSL_LOG(WARNING) << "InferenceInterpreterDelegateRunner::ctr!\n";
+        }
 
   absl::StatusOr<std::vector<Tensor>> Run(
       CalculatorContext* cc, const TensorSpan& tensor_span) override;

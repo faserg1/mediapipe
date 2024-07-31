@@ -74,6 +74,10 @@
 #include "tensorflow/lite/delegates/nnapi/nnapi_delegate.h"
 #endif  // ANDROID
 
+// Rockchip NPU
+#include <rockchip/rknn_api.h>
+
+
 namespace {
 // Commonly used to compute the number of blocks to launch in a kernel.
 int NumGroups(const int size, const int group_size) {  // NOLINT
@@ -894,10 +898,13 @@ absl::StatusOr<Packet> TfLiteInferenceCalculator::GetModelAsPacket(
   const auto& options =
       cc.Options<mediapipe::TfLiteInferenceCalculatorOptions>();
   if (!options.model_path().empty()) {
+    ABSL_LOG(WARNING) << options.model_path();
+
     return TfLiteModelLoader::LoadFromPath(options.model_path(),
                                            options.try_mmap_model());
   }
   if (cc.InputSidePackets().HasTag(kModelTag)) {
+    ABSL_LOG(WARNING) << "Packet!\n";
     return cc.InputSidePackets().Tag(kModelTag);
   }
   return absl::Status(absl::StatusCode::kNotFound,

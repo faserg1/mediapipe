@@ -273,6 +273,20 @@ cc_library(
     }),
 )
 
+cc_library(
+    name = "librknn",
+    visibility = ["//visibility:public"],
+    deps = select({
+        "//mediapipe:android_x86": [],
+        "//mediapipe:android_x86_64": [],
+        "//mediapipe:android_arm": [],
+        "//mediapipe:android_arm64": [],
+        "//conditions:default": [
+            "@linux_rknn//:librknn",
+        ],
+    }),
+)
+
 android_library(
     name = "androidx_annotation",
     exports = [

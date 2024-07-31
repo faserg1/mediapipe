@@ -760,6 +760,30 @@ cc_library(
 )
 
 cc_library(
+    name = "inference_calculator_rknn",
+    srcs = [
+        "inference_calculator_rknn.cc",
+    ],
+    deps = [
+        ":inference_calculator_interface",
+        ":inference_calculator_utils",
+        ":inference_interpreter_delegate_runner",
+        ":inference_runner",
+        ":tensor_span",
+        "//mediapipe/framework:calculator_framework",
+        "//mediapipe/framework/formats:tensor",
+        "//mediapipe/framework/port:ret_check",
+        "//mediapipe/framework/port:status",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/time",
+        # TODO: remove it
+        "@org_tensorflow//tensorflow/lite/delegates/xnnpack:xnnpack_delegate",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
     name = "inference_calculator_gl_if_compute_shader_available",
     deps = selects.with_or({
         ":compute_shader_unavailable": [],

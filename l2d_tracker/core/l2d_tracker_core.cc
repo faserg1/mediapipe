@@ -21,15 +21,16 @@
 constexpr char kInputStream[] = "input_video";
 constexpr char kEmptyStream[] = "input_empty";
 constexpr char kOutputStream[] = "output_video";
-/*
-constexpr char kHandsLandmarks[] = "hand_world_landmarks";
-constexpr char kPoseLandmarks[] = "pose_world_landmarks";
-*/
+
+constexpr char kHandsWorldLandmarks[] = "hand_world_landmarks";
+constexpr char kPoseWorldLandmarks[] = "pose_world_landmarks";
+
 constexpr char kHandsLandmarks[] = "hand_landmarks";
 constexpr char kPoseLandmarks[] = "pose_landmarks";
 
 constexpr char kHandedness[] = "handedness";
 constexpr char kFaceBlendshapes[] = "blendshapes";
+constexpr char kFaceLandmarks[] = "multi_face_landmarks";
 
 constexpr char kWindowName[] = "L2D MediaPipe Tracker Test";
 
@@ -39,57 +40,31 @@ ABSL_FLAG(std::string, calculator_graph_config_file, "",
 ABSL_FLAG(bool, show_window, false, 
     "true, if need to show window with landmarks.");
 
+ABSL_FLAG(int, capture_device, 0, 
+    "Which capture device to use");
+
 namespace {
   bool runGraph = true;
 }
 
 std::shared_ptr<L2DTrackerPack> packet;
 
-absl::Status handleHandedness(const mediapipe::Packet &packetHandedness)
+template <class PacketType>
+auto getHandler(void (*writeFunc)(L2DTrackerPack &, const PacketType &))
 {
-  if (!packet)
-    return {};
-  if (packetHandedness.IsEmpty())
-    return {};
-  auto &handednessList = packetHandedness.Get<std::vector<mediapipe::ClassificationList>>();
-  addHandednessInfoToPacket(*packet, handednessList);
-  return {};
-}
+  return std::function([writeFunc](const mediapipe::Packet &mediapipePacket) -> absl::Status
+  {
+    if (mediapipePacket.IsEmpty())
+      return {};
 
-absl::Status handleHands(const mediapipe::Packet &packetHands)
-{
-  if (!packet)
-    return {};
-  if (packetHands.IsEmpty())
-    return {};
-  auto &handsList = packetHands.Get<std::vector<LandmarksType>>();
-  addHandsInfoToPacket(*packet, handsList);
-  return {};
-}
+    if (!packet)
+      return {};
 
-absl::Status handlePose(const mediapipe::Packet &packetPose)
-{
-  if (!packet)
-    return {};
-  if (packetPose.IsEmpty())
-    return {};
-  auto &poseLandmarks = packetPose.Get<LandmarksType>();
-  addPoseInfoToPacket(*packet, poseLandmarks);
-  return {};
-}
+    auto &data = mediapipePacket.Get<PacketType>();
+    writeFunc(*packet, data);
 
-absl::Status handleBlendshapes(const mediapipe::Packet &packetBlendshapes)
-{
-  if (packetBlendshapes.IsEmpty())
     return {};
-
-  if (!packet)
-    return {};
-
-  auto &classificationList = packetBlendshapes.Get<mediapipe::ClassificationList>();
-  addFaceInfoToPacket(*packet, classificationList);
-
-  return {};
+  });
 }
 
 void handleError(const absl::Status &status)
@@ -117,8 +92,10 @@ absl::Status RunMPPGraph() {
 
   ABSL_LOG(INFO) << "Initialize the camera.";
 
+  const bool capture_device = absl::GetFlag(FLAGS_capture_device);
+
   cv::VideoCapture capture;
-  capture.open(0, cv::CAP_V4L);
+  capture.open(capture_device, cv::CAP_V4L);
   RET_CHECK(capture.isOpened());
 
   const bool show_window = absl::GetFlag(FLAGS_show_window);
@@ -169,9 +146,17 @@ absl::Status RunMPPGraph() {
     pollerFrame = std::make_shared<mediapipe::OutputStreamPoller>(std::move(status_poller.value()));
   }
 
-  MP_RETURN_IF_ERROR(graph.ObserveOutputStream(kPoseLandmarks, &handlePose, true));
-  MP_RETURN_IF_ERROR(graph.ObserveOutputStream(kHandsLandmarks, &handleHands, true));
-  MP_RETURN_IF_ERROR(graph.ObserveOutputStream(kFaceBlendshapes, &handleBlendshapes, true));
+  auto poseHandler = getHandler(&addPoseInfoToPacket);
+  auto handsHandler = getHandler(&addHandsInfoToPacket);
+  auto handnessHandler = getHandler(&addHandednessInfoToPacket);
+  auto faceHandler = getHandler(&addFaceInfoToPacket);
+  auto faceLandmarksHandler = getHandler(&addFaceLandmarksToPacket);
+
+  MP_RETURN_IF_ERROR(graph.ObserveOutputStream(kPoseLandmarks, poseHandler, true));
+  MP_RETURN_IF_ERROR(graph.ObserveOutputStream(kHandsLandmarks, handsHandler, true));
+  MP_RETURN_IF_ERROR(graph.ObserveOutputStream(kHandedness, handnessHandler, true));
+  MP_RETURN_IF_ERROR(graph.ObserveOutputStream(kFaceBlendshapes, faceHandler, true));
+  MP_RETURN_IF_ERROR(graph.ObserveOutputStream(kFaceLandmarks, faceLandmarksHandler, true));
 
   graph.SetErrorCallback(&handleError);
 

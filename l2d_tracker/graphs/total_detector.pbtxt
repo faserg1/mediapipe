@@ -22,6 +22,9 @@ output_stream: "pose_world_landmarks"
 # Pose landmarks. (NormalizedLandmarkList)
 output_stream: "pose_landmarks"
 
+# face landmarks. (std::vector<NormalizedLandmarkList>)
+output_stream: "multi_face_landmarks"
+
 output_stream: "CLASSIFICATIONS:blendshapes"
 
 ###

@@ -380,6 +380,12 @@ new_local_repository(
 )
 
 new_local_repository(
+    name = "linux_rknn",
+    build_file = "@//third_party:rknn.BUILD",
+    path = "/usr"
+)
+
+new_local_repository(
     name = "macos_opencv",
     build_file = "@//third_party:opencv_macos.BUILD",
     # For local MacOS builds, the path should point to an opencv@3 installation.

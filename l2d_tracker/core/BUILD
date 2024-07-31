@@ -24,5 +24,7 @@ cc_library(
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/log:absl_log",
+
+        "//third_party:libffmpeg", # move to another module
     ],
 )

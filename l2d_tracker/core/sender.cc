@@ -22,15 +22,18 @@ constexpr const size_t header_size =
     sizeof(packet_timestamp_type) + 
     sizeof(packet_seq_type);
 
-constexpr const size_t classification_offset = header_size;
+
 constexpr const size_t handedness = sizeof(float) * 2; // <-1 = left, >+1 = right, 0 = uknown
 constexpr const size_t hands_size = sizeof(float) * 5 * 21 * hands_using;
 constexpr const size_t pose_size = sizeof(float) * 5 * 33;
+constexpr const size_t face_size = sizeof(float) * 5 * 478;
 constexpr const size_t classification_size = sizeof(float) * 52;
-constexpr const size_t pose_offset = header_size + classification_size;
-constexpr const size_t hands_offset = header_size + classification_size + pose_size;
-constexpr const size_t handedness_offset = header_size + classification_size + pose_size + hands_size;
-constexpr const size_t total_size = header_size + classification_size + pose_size + hands_size + handedness;
+constexpr const size_t classification_offset = header_size;
+constexpr const size_t pose_offset = classification_offset + classification_size;
+constexpr const size_t hands_offset = pose_offset + pose_size;
+constexpr const size_t handedness_offset = hands_offset + hands_size;
+constexpr const size_t face_offset = handedness_offset + handedness;
+constexpr const size_t total_size = header_size + classification_size + pose_size + hands_size + handedness + face_size;
 
 struct L2DTrackerPack
 {
@@ -45,6 +48,7 @@ struct L2DTrackerPack
 
 void writeHeader(L2DTrackerPack &packet, packet_timestamp_type now);
 void handleIncome(L2DTrackerPack &packet, packet_timestamp_type now);
+void writeLandmarks(L2DTrackerPack &packet, const LandmarksType &landmarks, size_t &offset);
 packet_timestamp_type get_now();
 
 std::shared_ptr<L2DTrackerPack> createPacket()
@@ -91,34 +95,24 @@ void addFaceInfoToPacket(L2DTrackerPack &packet, const mediapipe::Classification
     }
 }
 
+void addFaceLandmarksToPacket(L2DTrackerPack &packet, const std::vector<LandmarksType> &landmarks)
+{
+    // Only one fucking face
+    auto &first_face = landmarks.front();
+    auto offset = face_offset;
+
+    writeLandmarks(packet, first_face, offset);
+}
+
 void addHandsInfoToPacket(L2DTrackerPack &packet, const std::vector<LandmarksType> &landmarks)
 {
-    auto *writter = reinterpret_cast<float*>(&packet.packet[hands_offset]);
     size_t hands_count = 0;
+    size_t offset = hands_offset;
     for (auto &hand : landmarks)
     {
         if (++hands_count > hands_using)
             break;
-        int count = hand.landmark_size();
-        //ABSL_LOG(INFO) << "hand " << hands_count << " landmark count " << count;
-        for (int idx = 0; idx < count; ++idx)
-        {
-            auto &landmark = hand.landmark(idx);
-            *writter = landmark.x();
-            writter++;
-
-            *writter = landmark.y();
-            writter++;
-
-            *writter = landmark.z();
-            writter++;
-
-            *writter = landmark.presence();
-            writter++;
-
-            *writter = landmark.visibility();
-            writter++;
-        }
+        writeLandmarks(packet, hand, offset);
     }
 }
 
@@ -138,26 +132,8 @@ void addHandednessInfoToPacket(L2DTrackerPack &packet, const std::vector<mediapi
 
 void addPoseInfoToPacket(L2DTrackerPack &packet, const LandmarksType &landmarks)
 {
-    int count = landmarks.landmark_size();
-    auto *writter = reinterpret_cast<float*>(&packet.packet[pose_offset]);
-    for (int idx = 0; idx < count; idx++)
-    {
-        auto &landmark = landmarks.landmark(idx);
-        *writter = landmark.x();
-        writter++;
-
-        *writter = landmark.y();
-        writter++;
-
-        *writter = landmark.z();
-        writter++;
-
-        *writter = landmark.presence();
-        writter++;
-
-        *writter = landmark.visibility();
-        writter++;
-    }
+    auto offset = pose_offset;
+    writeLandmarks(packet, landmarks, offset);
 }
 
 void sendAndFlushPacket(L2DTrackerPack &packet)
@@ -227,4 +203,31 @@ void writeHeader(L2DTrackerPack &packet, packet_timestamp_type now)
     *size = total_size - header_size;
     *timestamp_pack = now;
     *seq_pack = packet.seq;
+}
+
+void writeLandmarks(L2DTrackerPack &packet, const LandmarksType &landmarks, size_t &offset)
+{
+    int count = landmarks.landmark_size();
+    auto *base = reinterpret_cast<float*>(&packet.packet[offset]);
+    auto *writter = base;
+    for (int idx = 0; idx < count; idx++)
+    {
+        auto &landmark = landmarks.landmark(idx);
+        *writter = landmark.x();
+        writter++;
+
+        *writter = landmark.y();
+        writter++;
+
+        *writter = landmark.z();
+        writter++;
+
+        *writter = landmark.presence();
+        writter++;
+
+        *writter = landmark.visibility();
+        writter++;
+    }
+
+    offset += reinterpret_cast<size_t>(writter) - reinterpret_cast<size_t>(base);
 }

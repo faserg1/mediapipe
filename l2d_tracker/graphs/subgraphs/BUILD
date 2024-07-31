@@ -35,6 +35,7 @@ mediapipe_simple_subgraph(
     graph = "pose_landmarks_to_render_data.pbtxt",
     register_as = "PoseLandmarksToRenderData",
     deps = [
+        "//mediapipe/calculators/tflite:tflite_inference_calculator",
         "//mediapipe/calculators/core:concatenate_vector_calculator",
         "//mediapipe/calculators/core:split_proto_list_calculator",
         "//mediapipe/calculators/util:landmarks_to_render_data_calculator",
